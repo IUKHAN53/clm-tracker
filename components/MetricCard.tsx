@@ -1,20 +1,21 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 
 interface MetricCardProps {
   title: string;
   value: number;
-  iconLabel: string;
+  icon: keyof typeof Ionicons.glyphMap;
   bgColor: string;
   iconColor: string;
 }
 
-export default function MetricCard({ title, value, iconLabel, bgColor, iconColor }: MetricCardProps) {
+export default function MetricCard({ title, value, icon, bgColor, iconColor }: MetricCardProps) {
   return (
     <View style={[styles.card, { backgroundColor: bgColor }]}>
       <View style={[styles.iconCircle, { backgroundColor: iconColor + '20' }]}>
-        <Text style={[styles.iconText, { color: iconColor }]}>{iconLabel}</Text>
+        <Ionicons name={icon} size={22} color={iconColor} />
       </View>
       <Text style={styles.value}>{value}</Text>
       <Text style={styles.title}>{title}</Text>
@@ -38,10 +39,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
-  },
-  iconText: {
-    fontSize: font.size.lg,
-    fontWeight: font.weight.bold,
   },
   value: {
     fontSize: font.size.xxl,

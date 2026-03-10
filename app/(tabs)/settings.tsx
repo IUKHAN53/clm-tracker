@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 import { useChildrenStore } from '@/store/childrenStore';
 import { useAuthStore } from '@/store/authStore';
@@ -30,7 +32,7 @@ export default function SettingsScreen() {
 
   const handleSave = async () => {
     await setSiteInfo({ district, uc, fixSite });
-    Alert.alert('Saved', 'Location information updated successfully.');
+    Toast.show({ type: 'success', text1: 'Saved', text2: 'Location information updated successfully.' });
   };
 
   const handleLogout = () => {
@@ -41,7 +43,7 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await logout();
-          Alert.alert('Signed Out', 'You have been signed out. Data will be stored locally.');
+          Toast.show({ type: 'info', text1: 'Signed Out', text2: 'Data will be stored locally.' });
         },
       },
     ]);
@@ -49,19 +51,22 @@ export default function SettingsScreen() {
 
   const handleSync = async () => {
     if (!isAuthenticated) {
-      Alert.alert('Not Signed In', 'Please sign in first to sync data.');
+      Toast.show({ type: 'warning', text1: 'Not Signed In', text2: 'Please sign in first to sync data.' });
       return;
     }
     await syncPending();
     await fetchFromServer();
-    Alert.alert('Sync Complete', 'Data has been synchronized with the server.');
+    Toast.show({ type: 'success', text1: 'Sync Complete', text2: 'Data has been synchronized with the server.' });
   };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* Account Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="person-circle" size={22} color={theme.primary} />
+          <Text style={styles.sectionTitle}>Account</Text>
+        </View>
         {isAuthenticated ? (
           <>
             <View style={styles.userInfo}>
@@ -78,11 +83,18 @@ export default function SettingsScreen() {
 
             {/* Sync Status */}
             <View style={styles.syncRow}>
-              <View>
-                <Text style={styles.statsLabel}>Pending Sync:</Text>
-                <Text style={[styles.syncCount, pendingSync.length > 0 && styles.syncPending]}>
-                  {pendingSync.length} {pendingSync.length === 1 ? 'action' : 'actions'}
-                </Text>
+              <View style={styles.syncInfo}>
+                <Ionicons
+                  name={pendingSync.length > 0 ? 'cloud-upload' : 'cloud-done'}
+                  size={20}
+                  color={pendingSync.length > 0 ? theme.status.zeroDose : theme.status.vaccinated}
+                />
+                <View>
+                  <Text style={styles.statsLabel}>Pending Sync</Text>
+                  <Text style={[styles.syncCount, pendingSync.length > 0 && styles.syncPending]}>
+                    {pendingSync.length} {pendingSync.length === 1 ? 'action' : 'actions'}
+                  </Text>
+                </View>
               </View>
               <Pressable
                 style={({ pressed }) => [styles.syncBtn, pressed && styles.btnPressed]}
@@ -93,7 +105,10 @@ export default function SettingsScreen() {
                 {isSyncing ? (
                   <ActivityIndicator color={theme.textOnPrimary} size="small" />
                 ) : (
-                  <Text style={styles.syncBtnText}>Sync Now</Text>
+                  <View style={styles.btnRow}>
+                    <Ionicons name="sync" size={16} color={theme.textOnPrimary} />
+                    <Text style={styles.syncBtnText}>Sync Now</Text>
+                  </View>
                 )}
               </Pressable>
             </View>
@@ -103,7 +118,10 @@ export default function SettingsScreen() {
               onPress={handleLogout}
               accessibilityRole="button"
             >
-              <Text style={styles.logoutBtnText}>Sign Out</Text>
+              <View style={styles.btnRow}>
+                <Ionicons name="log-out" size={18} color={theme.status.refusal} />
+                <Text style={styles.logoutBtnText}>Sign Out</Text>
+              </View>
             </Pressable>
           </>
         ) : (
@@ -116,7 +134,10 @@ export default function SettingsScreen() {
               onPress={() => router.push('/login')}
               accessibilityRole="button"
             >
-              <Text style={styles.saveBtnText}>Sign In</Text>
+              <View style={styles.btnRow}>
+                <Ionicons name="log-in" size={18} color={theme.textOnPrimary} />
+                <Text style={styles.saveBtnText}>Sign In</Text>
+              </View>
             </Pressable>
           </>
         )}
@@ -124,7 +145,10 @@ export default function SettingsScreen() {
 
       {/* Site Info */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Location Information</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="location" size={22} color={theme.primary} />
+          <Text style={styles.sectionTitle}>Location Information</Text>
+        </View>
         <Text style={styles.sectionDesc}>
           Set your current field location. This appears on the dashboard.
         </Text>
@@ -167,28 +191,43 @@ export default function SettingsScreen() {
           onPress={handleSave}
           accessibilityRole="button"
         >
-          <Text style={styles.saveBtnText}>Save Location Info</Text>
+          <View style={styles.btnRow}>
+            <Ionicons name="save" size={18} color={theme.textOnPrimary} />
+            <Text style={styles.saveBtnText}>Save Location Info</Text>
+          </View>
         </Pressable>
       </View>
 
       {/* Data Management */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Data Management</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="server" size={22} color={theme.primary} />
+          <Text style={styles.sectionTitle}>Data Management</Text>
+        </View>
 
         <View style={styles.statsRow}>
-          <Text style={styles.statsLabel}>Total Records:</Text>
+          <View style={styles.statItem}>
+            <Ionicons name="document-text" size={18} color={theme.primary} />
+            <Text style={styles.statsLabel}>Total Records</Text>
+          </View>
           <Text style={styles.statsValue}>{children.length}</Text>
         </View>
 
         <View style={styles.statsRow}>
-          <Text style={styles.statsLabel}>Pending Sync:</Text>
+          <View style={styles.statItem}>
+            <Ionicons name="cloud-upload" size={18} color={theme.status.zeroDose} />
+            <Text style={styles.statsLabel}>Pending Sync</Text>
+          </View>
           <Text style={styles.statsValue}>{pendingSync.length}</Text>
         </View>
       </View>
 
       {/* App Info */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="information-circle" size={22} color={theme.primary} />
+          <Text style={styles.sectionTitle}>About</Text>
+        </View>
         <Text style={styles.aboutText}>
           CLM Vaccination Tracker v1.0.0{'\n'}
           Community Led Monitoring - Vaccination tracking for field workers.{'\n'}
@@ -217,11 +256,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
   sectionTitle: {
     fontSize: font.size.lg,
     fontWeight: font.weight.semibold,
     color: theme.text,
-    marginBottom: spacing.xs,
   },
   sectionDesc: {
     fontSize: font.size.sm,
@@ -268,6 +312,11 @@ const styles = StyleSheet.create({
     borderTopColor: theme.border,
     marginBottom: spacing.md,
   },
+  syncInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   syncCount: {
     fontSize: font.size.sm,
     color: theme.textMuted,
@@ -290,12 +339,18 @@ const styles = StyleSheet.create({
     fontSize: font.size.sm,
     fontWeight: font.weight.semibold,
   },
+  btnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   logoutBtn: {
     borderWidth: 1,
     borderColor: theme.status.refusal,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    justifyContent: 'center',
     minHeight: 44,
   },
   logoutBtnText: {
@@ -328,6 +383,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingVertical: spacing.lg,
     alignItems: 'center',
+    justifyContent: 'center',
     minHeight: 48,
   },
   btnPressed: {
@@ -341,10 +397,16 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: spacing.lg,
     paddingTop: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: theme.border,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   statsLabel: {
     fontSize: font.size.md,

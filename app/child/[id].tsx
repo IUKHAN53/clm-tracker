@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 import { useChildrenStore } from '@/store/childrenStore';
 import StatusBadge from '@/components/StatusBadge';
@@ -17,19 +19,22 @@ import { captureGPS } from '@/utils/gps';
 
 export default function ChildDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { updateChild, deleteChild } = useChildrenStore();
-  const child = useChildrenStore((s) => s.getChildById(id));
+  const updateChild = useChildrenStore((s) => s.updateChild);
+  const deleteChild = useChildrenStore((s) => s.deleteChild);
+  const child = useChildrenStore((s) => s.children.find((c) => c.id === id));
   const [isCapturingGPS, setIsCapturingGPS] = useState(false);
 
   if (!child) {
     return (
       <View style={styles.centered}>
+        <Ionicons name="alert-circle-outline" size={48} color={theme.textMuted} />
         <Text style={styles.errorText}>Record not found</Text>
         <Pressable
           style={styles.backBtn}
           onPress={() => router.back()}
           accessibilityRole="button"
         >
+          <Ionicons name="arrow-back" size={18} color={theme.textOnPrimary} />
           <Text style={styles.backBtnText}>Go Back</Text>
         </Pressable>
       </View>
@@ -41,6 +46,11 @@ export default function ChildDetailScreen() {
       vaccinated,
       dateOfVaccination: vaccinated === 'YES' ? new Date().toISOString().split('T')[0] : null,
     });
+    Toast.show({
+      type: vaccinated === 'YES' ? 'success' : 'info',
+      text1: 'Status Updated',
+      text2: vaccinated === 'YES' ? 'Marked as vaccinated.' : 'Marked as not vaccinated.',
+    });
   };
 
   const handleCaptureGPS = async () => {
@@ -48,6 +58,7 @@ export default function ChildDetailScreen() {
     const coords = await captureGPS();
     if (coords) {
       await updateChild(child.id, { gpsCoordinates: coords });
+      Toast.show({ type: 'success', text1: 'GPS Updated', text2: 'Coordinates captured successfully.' });
     }
     setIsCapturingGPS(false);
   };
@@ -68,6 +79,7 @@ export default function ChildDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             await deleteChild(child.id);
+            Toast.show({ type: 'success', text1: 'Deleted', text2: 'Record has been removed.' });
             router.back();
           },
         },
@@ -96,22 +108,29 @@ export default function ChildDetailScreen() {
 
       {/* Info Card */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Details</Text>
+        <View style={styles.cardHeader}>
+          <Ionicons name="information-circle" size={20} color={theme.primary} />
+          <Text style={styles.cardTitle}>Details</Text>
+        </View>
 
-        <InfoRow label="Address" value={child.address} />
+        <InfoRow icon="location" label="Address" value={child.address} />
         <InfoRow
+          icon="call"
           label="Contact"
           value={child.contactNumber || 'N/A'}
           onAction={child.contactNumber ? () => handleCall(child.contactNumber) : undefined}
-          actionLabel="Call"
+          actionIcon="call"
         />
-        <InfoRow label="Category" value={child.category} />
-        <InfoRow label="Serial #" value={String(child.serialNumber)} />
+        <InfoRow icon="folder" label="Category" value={child.category} />
+        <InfoRow icon="list" label="Serial #" value={String(child.serialNumber)} />
       </View>
 
       {/* Vaccination Action */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Vaccination Status</Text>
+        <View style={styles.cardHeader}>
+          <Ionicons name="medkit" size={20} color={theme.primary} />
+          <Text style={styles.cardTitle}>Vaccination Status</Text>
+        </View>
 
         <View style={styles.toggleRow}>
           <Pressable
@@ -123,6 +142,11 @@ export default function ChildDetailScreen() {
             accessibilityRole="button"
             accessibilityLabel="Mark as vaccinated"
           >
+            <Ionicons
+              name="checkmark-circle"
+              size={20}
+              color={child.vaccinated === 'YES' ? '#FFFFFF' : theme.textSecondary}
+            />
             <Text
               style={[
                 styles.toggleText,
@@ -141,6 +165,11 @@ export default function ChildDetailScreen() {
             accessibilityRole="button"
             accessibilityLabel="Mark as not vaccinated"
           >
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color={child.vaccinated === 'NO' ? '#FFFFFF' : theme.textSecondary}
+            />
             <Text
               style={[
                 styles.toggleText,
@@ -153,15 +182,19 @@ export default function ChildDetailScreen() {
         </View>
 
         {child.dateOfVaccination && (
-          <InfoRow label="Date of Vaccination" value={child.dateOfVaccination} />
+          <InfoRow icon="calendar" label="Date of Vaccination" value={child.dateOfVaccination} />
         )}
       </View>
 
       {/* Community Info */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Community Member</Text>
-        <InfoRow label="Name" value={child.communityMemberName || 'N/A'} />
+        <View style={styles.cardHeader}>
+          <Ionicons name="people" size={20} color={theme.primary} />
+          <Text style={styles.cardTitle}>Community Member</Text>
+        </View>
+        <InfoRow icon="person" label="Name" value={child.communityMemberName || 'N/A'} />
         <InfoRow
+          icon="call"
           label="Contact"
           value={child.communityMemberContact || 'N/A'}
           onAction={
@@ -169,15 +202,18 @@ export default function ChildDetailScreen() {
               ? () => handleCall(child.communityMemberContact)
               : undefined
           }
-          actionLabel="Call"
+          actionIcon="call"
         />
       </View>
 
       {/* GPS */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>GPS Location</Text>
+        <View style={styles.cardHeader}>
+          <Ionicons name="location" size={20} color={theme.primary} />
+          <Text style={styles.cardTitle}>GPS Location</Text>
+        </View>
         {child.gpsCoordinates ? (
-          <InfoRow label="Coordinates" value={child.gpsCoordinates} />
+          <InfoRow icon="navigate" label="Coordinates" value={child.gpsCoordinates} />
         ) : (
           <Text style={styles.noGps}>No GPS coordinates captured yet</Text>
         )}
@@ -190,9 +226,12 @@ export default function ChildDetailScreen() {
           {isCapturingGPS ? (
             <ActivityIndicator color={theme.textOnPrimary} size="small" />
           ) : (
-            <Text style={styles.gpsBtnText}>
-              {child.gpsCoordinates ? 'Update GPS' : 'Capture GPS'}
-            </Text>
+            <View style={styles.btnContent}>
+              <Ionicons name="navigate" size={18} color={theme.textOnPrimary} />
+              <Text style={styles.gpsBtnText}>
+                {child.gpsCoordinates ? 'Update GPS' : 'Capture GPS'}
+              </Text>
+            </View>
           )}
         </Pressable>
       </View>
@@ -203,36 +242,44 @@ export default function ChildDetailScreen() {
         onPress={handleDelete}
         accessibilityRole="button"
       >
-        <Text style={styles.deleteBtnText}>Delete Record</Text>
+        <View style={styles.btnContent}>
+          <Ionicons name="trash" size={18} color={theme.status.refusal} />
+          <Text style={styles.deleteBtnText}>Delete Record</Text>
+        </View>
       </Pressable>
     </ScrollView>
   );
 }
 
 function InfoRow({
+  icon,
   label,
   value,
   onAction,
-  actionLabel,
+  actionIcon,
 }: {
+  icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: string;
   onAction?: () => void;
-  actionLabel?: string;
+  actionIcon?: keyof typeof Ionicons.glyphMap;
 }) {
   return (
     <View style={infoStyles.row}>
-      <Text style={infoStyles.label}>{label}</Text>
+      <View style={infoStyles.labelRow}>
+        <Ionicons name={icon} size={14} color={theme.textMuted} />
+        <Text style={infoStyles.label}>{label}</Text>
+      </View>
       <View style={infoStyles.valueRow}>
         <Text style={infoStyles.value}>{value}</Text>
-        {onAction && (
+        {onAction && actionIcon && (
           <Pressable
             onPress={onAction}
             style={infoStyles.actionBtn}
             accessibilityRole="button"
-            accessibilityLabel={`${actionLabel} ${value}`}
+            accessibilityLabel={`Call ${value}`}
           >
-            <Text style={infoStyles.actionText}>{actionLabel}</Text>
+            <Ionicons name={actionIcon} size={14} color={theme.primary} />
           </Pressable>
         )}
       </View>
@@ -248,6 +295,11 @@ const infoStyles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.borderLight,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   label: {
     fontSize: font.size.sm,
@@ -269,14 +321,11 @@ const infoStyles = StyleSheet.create({
   },
   actionBtn: {
     backgroundColor: theme.primary + '15',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
-  },
-  actionText: {
-    fontSize: font.size.xs,
-    color: theme.primary,
-    fontWeight: font.weight.semibold,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
@@ -295,13 +344,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.background,
+    gap: spacing.md,
   },
   errorText: {
     fontSize: font.size.lg,
     color: theme.textSecondary,
-    marginBottom: spacing.lg,
   },
   backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     backgroundColor: theme.primary,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
@@ -361,11 +413,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   cardTitle: {
     fontSize: font.size.lg,
     fontWeight: font.weight.semibold,
     color: theme.text,
-    marginBottom: spacing.sm,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -374,11 +431,13 @@ const styles = StyleSheet.create({
   },
   toggleBtn: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
     paddingVertical: spacing.lg,
     borderRadius: radius.md,
-    alignItems: 'center',
     minHeight: 52,
-    justifyContent: 'center',
   },
   toggleActive: {
     backgroundColor: theme.status.vaccinated,
@@ -412,6 +471,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     minHeight: 48,
     justifyContent: 'center',
+  },
+  btnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   btnPressed: {
     opacity: 0.8,

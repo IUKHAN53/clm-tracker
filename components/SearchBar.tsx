@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, TextInput, StyleSheet, Pressable, Text } from 'react-native';
+import { View, TextInput, StyleSheet, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 
 interface SearchBarProps {
@@ -11,7 +12,7 @@ interface SearchBarProps {
 export default function SearchBar({ value, onChangeText, placeholder = 'Search by name or father name...' }: SearchBarProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>&#x1F50D;</Text>
+      <Ionicons name="search" size={18} color={theme.textMuted} style={styles.icon} />
       <TextInput
         style={styles.input}
         value={value}
@@ -30,7 +31,7 @@ export default function SearchBar({ value, onChangeText, placeholder = 'Search b
           accessibilityLabel="Clear search"
           accessibilityRole="button"
         >
-          <Text style={styles.clearText}>✕</Text>
+          <Ionicons name="close" size={14} color={theme.textSecondary} />
         </Pressable>
       )}
     </View>
@@ -50,7 +51,6 @@ const styles = StyleSheet.create({
     height: 48,
   },
   icon: {
-    fontSize: 16,
     marginRight: spacing.sm,
   },
   input: {
@@ -66,10 +66,5 @@ const styles = StyleSheet.create({
     backgroundColor: theme.borderLight,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  clearText: {
-    fontSize: 12,
-    color: theme.textSecondary,
-    fontWeight: font.weight.bold,
   },
 });

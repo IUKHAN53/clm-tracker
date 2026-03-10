@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 import { FilterType } from '@/types';
 
@@ -8,7 +9,13 @@ interface FilterChipsProps {
   onChange: (filter: FilterType) => void;
 }
 
-const filters: FilterType[] = ['All', 'Refusal', 'Zero Dose', 'Vaccinated', 'Not Vaccinated'];
+const filters: { key: FilterType; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'All', icon: 'apps' },
+  { key: 'Refusal', icon: 'close-circle' },
+  { key: 'Zero Dose', icon: 'alert-circle' },
+  { key: 'Vaccinated', icon: 'checkmark-circle' },
+  { key: 'Not Vaccinated', icon: 'time' },
+];
 
 const filterColors: Record<FilterType, string> = {
   All: theme.primary,
@@ -25,30 +32,35 @@ export default function FilterChips({ active, onChange }: FilterChipsProps) {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}
     >
-      {filters.map((filter) => {
-        const isActive = active === filter;
-        const color = filterColors[filter];
+      {filters.map(({ key, icon }) => {
+        const isActive = active === key;
+        const color = filterColors[key];
         return (
           <Pressable
-            key={filter}
+            key={key}
             style={[
               styles.chip,
               isActive
                 ? { backgroundColor: color }
                 : { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border },
             ]}
-            onPress={() => onChange(filter)}
+            onPress={() => onChange(key)}
             accessibilityRole="button"
             accessibilityState={{ selected: isActive }}
-            accessibilityLabel={`Filter by ${filter}`}
+            accessibilityLabel={`Filter by ${key}`}
           >
+            <Ionicons
+              name={icon}
+              size={14}
+              color={isActive ? '#FFFFFF' : theme.textMuted}
+            />
             <Text
               style={[
                 styles.label,
                 { color: isActive ? '#FFFFFF' : theme.textSecondary },
               ]}
             >
-              {filter}
+              {key}
             </Text>
           </Pressable>
         );
@@ -64,11 +76,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   chip: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.sm + 2,
     borderRadius: radius.full,
-    minHeight: 36,
-    justifyContent: 'center',
+    height: 36,
   },
   label: {
     fontSize: font.size.sm,

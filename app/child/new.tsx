@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,19 +6,22 @@ import {
   ScrollView,
   TextInput,
   Pressable,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 import { useChildrenStore } from '@/store/childrenStore';
+import { useAuthStore } from '@/store/authStore';
 import { ChildCategory, VaccinationStatus } from '@/types';
 import { captureGPS } from '@/utils/gps';
 
 export default function NewChildScreen() {
   const { addChild } = useChildrenStore();
+  const user = useAuthStore((s) => s.user);
 
   const [childName, setChildName] = useState('');
   const [fatherName, setFatherName] = useState('');
@@ -27,11 +30,12 @@ export default function NewChildScreen() {
   const [contactNumber, setContactNumber] = useState('');
   const [category, setCategory] = useState<ChildCategory>('Defaulter');
   const [vaccinated, setVaccinated] = useState<VaccinationStatus>('NO');
-  const [communityMemberName, setCommunityMemberName] = useState('');
-  const [communityMemberContact, setCommunityMemberContact] = useState('');
+  const [communityMemberName] = useState(user?.name || '');
+  const [communityMemberContact] = useState(user?.phone || '');
   const [gpsCoordinates, setGpsCoordinates] = useState<string | null>(null);
   const [isCapturingGPS, setIsCapturingGPS] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
 
   const handleCaptureGPS = async () => {
     setIsCapturingGPS(true);
@@ -42,19 +46,23 @@ export default function NewChildScreen() {
 
   const handleSave = async () => {
     if (!childName.trim()) {
-      Alert.alert('Required', 'Please enter the child name.');
+      Toast.show({ type: 'warning', text1: 'Required', text2: 'Please enter the child name.' });
       return;
     }
     if (!fatherName.trim()) {
-      Alert.alert('Required', 'Please enter the father name.');
+      Toast.show({ type: 'warning', text1: 'Required', text2: 'Please enter the father name.' });
       return;
     }
     if (!age.trim()) {
-      Alert.alert('Required', 'Please enter the child age.');
+      Toast.show({ type: 'warning', text1: 'Required', text2: 'Please enter the child age.' });
       return;
     }
 
+    // Prevent duplicate submissions
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
     setIsSaving(true);
+
     try {
       await addChild({
         childName: childName.trim(),
@@ -71,14 +79,26 @@ export default function NewChildScreen() {
         gpsCoordinates,
       });
 
-      Alert.alert('Success', 'Child record added successfully.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      Toast.show({
+        type: 'success',
+        text1: 'Record Saved',
+        text2: 'Child record added successfully.',
+        onHide: () => router.back(),
+      });
+
+      // Navigate back after a short delay for toast visibility
+      setTimeout(() => router.back(), 1500);
     } catch {
-      Alert.alert('Error', 'Failed to save record. Please try again.');
-    } finally {
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save record. Please try again.' });
+      isSavingRef.current = false;
       setIsSaving(false);
     }
+  };
+
+  const categoryIcons: Record<ChildCategory, keyof typeof Ionicons.glyphMap> = {
+    Defaulter: 'time',
+    Refusal: 'close-circle',
+    'Zero Dose': 'alert-circle',
   };
 
   return (
@@ -93,7 +113,10 @@ export default function NewChildScreen() {
       >
         {/* Child Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Child Information</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="person" size={20} color={theme.primary} />
+            <Text style={styles.sectionTitle}>Child Information</Text>
+          </View>
 
           <FormField label="Child Name *" value={childName} onChange={setChildName} placeholder="Enter child name" />
           <FormField label="Father Name *" value={fatherName} onChange={setFatherName} placeholder="Enter father name" />
@@ -110,7 +133,10 @@ export default function NewChildScreen() {
 
         {/* Category */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Category</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="list" size={20} color={theme.primary} />
+            <Text style={styles.sectionTitle}>Category</Text>
+          </View>
           <View style={styles.chipRow}>
             {(['Defaulter', 'Refusal', 'Zero Dose'] as ChildCategory[]).map((cat) => (
               <Pressable
@@ -123,6 +149,11 @@ export default function NewChildScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: category === cat }}
               >
+                <Ionicons
+                  name={categoryIcons[cat]}
+                  size={16}
+                  color={category === cat ? '#FFFFFF' : theme.textSecondary}
+                />
                 <Text
                   style={[
                     styles.categoryText,
@@ -138,7 +169,10 @@ export default function NewChildScreen() {
 
         {/* Vaccination */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Vaccinated?</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="medkit" size={20} color={theme.primary} />
+            <Text style={styles.sectionTitle}>Vaccinated?</Text>
+          </View>
           <View style={styles.toggleRow}>
             <Pressable
               style={[
@@ -148,6 +182,11 @@ export default function NewChildScreen() {
               onPress={() => setVaccinated('YES')}
               accessibilityRole="button"
             >
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={vaccinated === 'YES' ? '#FFFFFF' : theme.textSecondary}
+              />
               <Text
                 style={[
                   styles.toggleText,
@@ -165,6 +204,11 @@ export default function NewChildScreen() {
               onPress={() => setVaccinated('NO')}
               accessibilityRole="button"
             >
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={vaccinated === 'NO' ? '#FFFFFF' : theme.textSecondary}
+              />
               <Text
                 style={[
                   styles.toggleText,
@@ -176,33 +220,44 @@ export default function NewChildScreen() {
             </Pressable>
           </View>
           {vaccinated === 'YES' && (
-            <Text style={styles.dateNote}>
-              Date will be set to today: {new Date().toISOString().split('T')[0]}
-            </Text>
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar" size={14} color={theme.status.vaccinated} />
+              <Text style={styles.dateNote}>
+                Date will be set to today: {new Date().toISOString().split('T')[0]}
+              </Text>
+            </View>
           )}
         </View>
 
         {/* Community Member */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Community Member Info</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="people" size={20} color={theme.primary} />
+            <Text style={styles.sectionTitle}>Community Member Info</Text>
+          </View>
           <FormField
             label="Community Member Name"
             value={communityMemberName}
-            onChange={setCommunityMemberName}
-            placeholder="Enter community member name"
+            onChange={() => {}}
+            placeholder="Auto-filled from login"
+            editable={false}
           />
           <FormField
             label="Contact Number"
             value={communityMemberContact}
-            onChange={setCommunityMemberContact}
-            placeholder="Enter contact number"
+            onChange={() => {}}
+            placeholder="Auto-filled from login"
             keyboardType="phone-pad"
+            editable={false}
           />
         </View>
 
         {/* GPS */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>GPS Coordinates</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="location" size={20} color={theme.primary} />
+            <Text style={styles.sectionTitle}>GPS Coordinates</Text>
+          </View>
           {gpsCoordinates && (
             <Text style={styles.gpsValue}>{gpsCoordinates}</Text>
           )}
@@ -215,16 +270,19 @@ export default function NewChildScreen() {
             {isCapturingGPS ? (
               <ActivityIndicator color={theme.textOnPrimary} size="small" />
             ) : (
-              <Text style={styles.gpsBtnText}>
-                {gpsCoordinates ? 'Re-capture GPS' : 'Capture GPS Location'}
-              </Text>
+              <View style={styles.btnContent}>
+                <Ionicons name="navigate" size={18} color={theme.textOnPrimary} />
+                <Text style={styles.gpsBtnText}>
+                  {gpsCoordinates ? 'Re-capture GPS' : 'Capture GPS Location'}
+                </Text>
+              </View>
             )}
           </Pressable>
         </View>
 
         {/* Save Button */}
         <Pressable
-          style={({ pressed }) => [styles.saveBtn, pressed && styles.btnPressed]}
+          style={({ pressed }) => [styles.saveBtn, pressed && styles.btnPressed, isSaving && styles.btnDisabled]}
           onPress={handleSave}
           disabled={isSaving}
           accessibilityRole="button"
@@ -232,7 +290,10 @@ export default function NewChildScreen() {
           {isSaving ? (
             <ActivityIndicator color={theme.textOnPrimary} size="small" />
           ) : (
-            <Text style={styles.saveBtnText}>Save Record</Text>
+            <View style={styles.btnContent}>
+              <Ionicons name="checkmark-done" size={20} color={theme.textOnPrimary} />
+              <Text style={styles.saveBtnText}>Save Record</Text>
+            </View>
           )}
         </Pressable>
       </ScrollView>
@@ -246,24 +307,27 @@ function FormField({
   onChange,
   placeholder,
   keyboardType = 'default',
+  editable = true,
 }: {
   label: string;
   value: string;
   onChange: (text: string) => void;
   placeholder: string;
   keyboardType?: 'default' | 'phone-pad' | 'numeric';
+  editable?: boolean;
 }) {
   return (
     <View style={fieldStyles.container}>
       <Text style={fieldStyles.label}>{label}</Text>
       <TextInput
-        style={fieldStyles.input}
+        style={[fieldStyles.input, !editable && fieldStyles.inputDisabled]}
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
         placeholderTextColor={theme.textMuted}
         keyboardType={keyboardType}
         accessibilityLabel={label}
+        editable={editable}
       />
     </View>
   );
@@ -290,6 +354,10 @@ const fieldStyles = StyleSheet.create({
     backgroundColor: theme.surfaceAlt,
     minHeight: 48,
   },
+  inputDisabled: {
+    backgroundColor: theme.border + '30',
+    color: theme.textMuted,
+  },
 });
 
 const styles = StyleSheet.create({
@@ -312,11 +380,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
   sectionTitle: {
     fontSize: font.size.lg,
     fontWeight: font.weight.semibold,
     color: theme.text,
-    marginBottom: spacing.lg,
   },
   chipRow: {
     flexDirection: 'row',
@@ -324,11 +397,13 @@ const styles = StyleSheet.create({
   },
   categoryChip: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
     paddingVertical: spacing.md,
     borderRadius: radius.md,
-    alignItems: 'center',
     minHeight: 48,
-    justifyContent: 'center',
   },
   categoryActive: {
     backgroundColor: theme.primary,
@@ -352,11 +427,13 @@ const styles = StyleSheet.create({
   },
   toggleBtn: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
     paddingVertical: spacing.lg,
     borderRadius: radius.md,
-    alignItems: 'center',
     minHeight: 56,
-    justifyContent: 'center',
   },
   toggleYes: {
     backgroundColor: theme.status.vaccinated,
@@ -377,10 +454,15 @@ const styles = StyleSheet.create({
   toggleTextOn: {
     color: '#FFFFFF',
   },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
   dateNote: {
     fontSize: font.size.sm,
     color: theme.status.vaccinated,
-    marginTop: spacing.sm,
     fontWeight: font.weight.medium,
   },
   gpsValue: {
@@ -398,8 +480,16 @@ const styles = StyleSheet.create({
     minHeight: 48,
     justifyContent: 'center',
   },
+  btnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   btnPressed: {
     opacity: 0.8,
+  },
+  btnDisabled: {
+    opacity: 0.6,
   },
   gpsBtnText: {
     color: theme.textOnPrimary,

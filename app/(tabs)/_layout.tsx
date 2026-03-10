@@ -1,36 +1,39 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { theme, font } from '@/constants/Colors';
 
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
+const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  index: 'grid',
+  children: 'people',
+  settings: 'settings-sharp',
+};
+
+function TabIcon({ name, focused }: { name: string; focused: boolean }) {
+  const iconName = TAB_ICONS[name] || 'document';
   return (
-    <View style={[tabIconStyles.container, focused && tabIconStyles.focused]}>
-      <Text style={[tabIconStyles.text, focused && tabIconStyles.textFocused]}>
-        {label}
-      </Text>
+    <View style={[styles.iconWrap, focused && styles.iconFocused]}>
+      <Ionicons
+        name={focused ? iconName : (`${iconName}-outline` as keyof typeof Ionicons.glyphMap)}
+        size={22}
+        color={focused ? theme.primary : theme.textMuted}
+      />
     </View>
   );
 }
 
-const tabIconStyles = StyleSheet.create({
-  container: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+const styles = StyleSheet.create({
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  focused: {
+  iconFocused: {
     backgroundColor: theme.primary + '15',
-  },
-  text: {
-    fontSize: 18,
-    color: theme.textMuted,
-  },
-  textFocused: {
-    color: theme.primary,
   },
 });
 
@@ -43,9 +46,9 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: theme.surface,
           borderTopColor: theme.border,
-          height: 60,
+          height: 62,
           paddingBottom: 8,
-          paddingTop: 4,
+          paddingTop: 6,
         },
         tabBarLabelStyle: {
           fontSize: font.size.xs,
@@ -65,27 +68,21 @@ export default function TabLayout() {
         options={{
           title: 'Dashboard',
           headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon label="&#9776;" focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon name="index" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="children"
         options={{
           title: 'Records',
-          tabBarIcon: ({ focused }) => (
-            <TabIcon label="&#128203;" focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon name="children" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ focused }) => (
-            <TabIcon label="&#9881;" focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon name="settings" focused={focused} />,
         }}
       />
     </Tabs>

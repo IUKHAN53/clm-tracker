@@ -1,5 +1,6 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 import { useChildrenStore } from '@/store/childrenStore';
@@ -9,8 +10,31 @@ import SearchBar from '@/components/SearchBar';
 import FilterChips from '@/components/FilterChips';
 
 export default function ChildrenListScreen() {
-  const { searchQuery, setSearchQuery, activeFilter, setActiveFilter } = useChildrenStore();
-  const filteredChildren = useChildrenStore((s) => s.getFilteredChildren());
+  const searchQuery = useChildrenStore((s) => s.searchQuery);
+  const setSearchQuery = useChildrenStore((s) => s.setSearchQuery);
+  const activeFilter = useChildrenStore((s) => s.activeFilter);
+  const setActiveFilter = useChildrenStore((s) => s.setActiveFilter);
+  const children = useChildrenStore((s) => s.children);
+
+  const filteredChildren = useMemo(() => {
+    let filtered = children;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (c) =>
+          c.childName.toLowerCase().includes(q) ||
+          c.fatherName.toLowerCase().includes(q) ||
+          c.address.toLowerCase().includes(q)
+      );
+    }
+    switch (activeFilter) {
+      case 'Refusal': filtered = filtered.filter((c) => c.category === 'Refusal'); break;
+      case 'Zero Dose': filtered = filtered.filter((c) => c.category === 'Zero Dose'); break;
+      case 'Vaccinated': filtered = filtered.filter((c) => c.vaccinated === 'YES'); break;
+      case 'Not Vaccinated': filtered = filtered.filter((c) => c.vaccinated === 'NO'); break;
+    }
+    return filtered;
+  }, [children, searchQuery, activeFilter]);
 
   const renderItem = useCallback(
     ({ item }: { item: ChildRecord }) => <ChildListItem child={item} />,
@@ -43,7 +67,7 @@ export default function ChildrenListScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>📋</Text>
+            <Ionicons name="document-text-outline" size={56} color={theme.textMuted} style={{ marginBottom: spacing.lg }} />
             <Text style={styles.emptyTitle}>No Records Found</Text>
             <Text style={styles.emptyText}>
               {searchQuery || activeFilter !== 'All'
@@ -61,7 +85,7 @@ export default function ChildrenListScreen() {
         accessibilityRole="button"
         accessibilityLabel="Add new child record"
       >
-        <Text style={styles.fabIcon}>+</Text>
+        <Ionicons name="add" size={30} color="#FFFFFF" />
       </Pressable>
     </View>
   );
