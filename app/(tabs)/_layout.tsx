@@ -1,68 +1,90 @@
 import React from 'react';
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
+import { Tabs } from 'expo-router';
+import { View, Text, StyleSheet } from 'react-native';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { theme, font } from '@/constants/Colors';
+
+function TabIcon({ label, focused }: { label: string; focused: boolean }) {
+  return (
+    <View style={[tabIconStyles.container, focused && tabIconStyles.focused]}>
+      <Text style={[tabIconStyles.text, focused && tabIconStyles.textFocused]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+const tabIconStyles = StyleSheet.create({
+  container: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  focused: {
+    backgroundColor: theme.primary + '15',
+  },
+  text: {
+    fontSize: 18,
+    color: theme.textMuted,
+  },
+  textFocused: {
+    color: theme.primary,
+  },
+});
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textMuted,
+        tabBarStyle: {
+          backgroundColor: theme.surface,
+          borderTopColor: theme.border,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 4,
+        },
+        tabBarLabelStyle: {
+          fontSize: font.size.xs,
+          fontWeight: font.weight.medium,
+        },
+        headerStyle: {
+          backgroundColor: theme.background,
+        },
+        headerTintColor: theme.text,
+        headerTitleStyle: {
+          fontWeight: font.weight.semibold,
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
+          title: 'Dashboard',
+          headerShown: false,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon label="&#9776;" focused={focused} />
           ),
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="children"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
+          title: 'Records',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon label="&#128203;" focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon label="&#9881;" focused={focused} />
           ),
         }}
       />
