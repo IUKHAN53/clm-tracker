@@ -31,7 +31,8 @@ interface ChildrenState {
   setSiteInfo: (info: SiteInfo) => Promise<void>;
   setSearchQuery: (query: string) => void;
   setActiveFilter: (filter: FilterType) => void;
-  syncPending: () => Promise<void>;
+  syncPending: () => Promise<{ synced: number; failed: number }>;
+  syncSingleRecord: (id: string) => Promise<{ success: boolean; error?: string }>;
 
   // Computed
   getFilteredChildren: () => ChildRecord[];
@@ -234,10 +235,13 @@ export const useChildrenStore = create<ChildrenState>((set, get) => ({
 
   syncPending: async () => {
     const state = get();
-    if (!useAuthStore.getState().isAuthenticated || state.pendingSync.length === 0 || state.isSyncing) return;
+    if (!useAuthStore.getState().isAuthenticated || state.pendingSync.length === 0 || state.isSyncing) {
+      return { synced: 0, failed: 0 };
+    }
 
     set({ isSyncing: true });
     const remaining: PendingAction[] = [];
+    let synced = 0;
 
     for (const action of state.pendingSync) {
       try {
@@ -252,6 +256,7 @@ export const useChildrenStore = create<ChildrenState>((set, get) => ({
             await api.delete(`/vaccination-records/${action.serverId}`);
             break;
         }
+        synced++;
       } catch {
         remaining.push(action);
       }
@@ -261,8 +266,55 @@ export const useChildrenStore = create<ChildrenState>((set, get) => ({
     await savePendingActions(remaining);
 
     // Refresh from server after sync
-    if (remaining.length < state.pendingSync.length) {
-      get().fetchFromServer();
+    if (synced > 0) {
+      await get().fetchFromServer();
+    }
+
+    return { synced, failed: remaining.length };
+  },
+
+  syncSingleRecord: async (id: string) => {
+    const state = get();
+    if (!useAuthStore.getState().isAuthenticated) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    const child = state.children.find((c) => c.id === id);
+    if (!child) {
+      return { success: false, error: 'Record not found' };
+    }
+
+    // Check if record is already synced (numeric ID = server-assigned)
+    const isNumeric = /^\d+$/.test(id);
+    if (isNumeric) {
+      return { success: true }; // Already synced
+    }
+
+    set({ isSyncing: true });
+
+    try {
+      const payload = toApiPayload(child, state.siteInfo);
+      payload.submitted_at = child.createdAt || new Date().toISOString();
+
+      const response = await api.post('/vaccination-records', payload);
+      const serverRecord = fromApiRecord(response.data.data);
+
+      // Replace local record with server record
+      const updated = state.children.map((c) => (c.id === id ? serverRecord : c));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+      // Remove matching pending action
+      const pending = state.pendingSync.filter(
+        (a) => !(a.type === 'create' && a.data.child_name === child.childName && a.data.father_name === child.fatherName)
+      );
+      await savePendingActions(pending);
+
+      set({ children: updated, pendingSync: pending, isSyncing: false });
+      return { success: true };
+    } catch (err: unknown) {
+      set({ isSyncing: false });
+      const message = err instanceof Error ? err.message : 'Failed to sync record';
+      return { success: false, error: message };
     }
   },
 

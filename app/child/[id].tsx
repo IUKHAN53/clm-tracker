@@ -13,8 +13,10 @@ import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 import { useChildrenStore } from '@/store/childrenStore';
+import { useAuthStore } from '@/store/authStore';
 import StatusBadge from '@/components/StatusBadge';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import LoginPrompt from '@/components/LoginPrompt';
 import { isSynced, formatDate } from '@/utils/sync';
 import { captureGPS } from '@/utils/gps';
 
@@ -22,9 +24,13 @@ export default function ChildDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const updateChild = useChildrenStore((s) => s.updateChild);
   const deleteChild = useChildrenStore((s) => s.deleteChild);
+  const syncSingleRecord = useChildrenStore((s) => s.syncSingleRecord);
   const child = useChildrenStore((s) => s.children.find((c) => c.id === id));
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [isCapturingGPS, setIsCapturingGPS] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [isSyncingRecord, setIsSyncingRecord] = useState(false);
 
   if (!child) {
     return (
@@ -75,6 +81,31 @@ export default function ChildDetailScreen() {
     await deleteChild(child.id);
     Toast.show({ type: 'success', text1: 'Deleted', text2: 'Record has been removed.' });
     router.back();
+  };
+
+  const handleSyncRecord = async () => {
+    if (!isAuthenticated) {
+      setShowLogin(true);
+      return;
+    }
+    setIsSyncingRecord(true);
+    try {
+      const result = await syncSingleRecord(child.id);
+      if (result.success) {
+        Toast.show({ type: 'success', text1: 'Synced', text2: 'Record synced with server.' });
+      } else {
+        Toast.show({ type: 'error', text1: 'Sync Failed', text2: result.error || 'Could not sync record.' });
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: 'Sync Error', text2: 'Could not connect to server.' });
+    } finally {
+      setIsSyncingRecord(false);
+    }
+  };
+
+  const handleLoginSuccess = () => {
+    setShowLogin(false);
+    handleSyncRecord();
   };
 
   return (
@@ -252,6 +283,24 @@ export default function ChildDetailScreen() {
 
         <InfoRow icon="calendar" label="Created" value={formatDate(child.createdAt)} />
         <InfoRow icon="create" label="Last Updated" value={formatDate(child.updatedAt)} />
+
+        {!isSynced(child.id) && (
+          <Pressable
+            style={({ pressed }) => [styles.syncNowBtn, pressed && styles.btnPressed, isSyncingRecord && styles.syncNowBtnDisabled]}
+            onPress={handleSyncRecord}
+            disabled={isSyncingRecord}
+            accessibilityRole="button"
+          >
+            {isSyncingRecord ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <View style={styles.btnContent}>
+                <Ionicons name="cloud-upload" size={18} color="#FFFFFF" />
+                <Text style={styles.syncNowBtnText}>Sync Now</Text>
+              </View>
+            )}
+          </Pressable>
+        )}
       </View>
 
       {/* Delete */}
@@ -275,6 +324,12 @@ export default function ChildDetailScreen() {
         cancelText="Cancel"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setShowDeleteDialog(false)}
+      />
+
+      <LoginPrompt
+        visible={showLogin}
+        onSuccess={handleLoginSuccess}
+        onCancel={() => setShowLogin(false)}
       />
     </ScrollView>
   );
@@ -526,5 +581,22 @@ const styles = StyleSheet.create({
     color: theme.status.refusal,
     fontSize: font.size.md,
     fontWeight: font.weight.semibold,
+  },
+  syncNowBtn: {
+    backgroundColor: theme.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    marginTop: spacing.md,
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  syncNowBtnText: {
+    color: '#FFFFFF',
+    fontSize: font.size.md,
+    fontWeight: font.weight.semibold,
+  },
+  syncNowBtnDisabled: {
+    opacity: 0.6,
   },
 });

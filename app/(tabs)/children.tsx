@@ -1,13 +1,16 @@
-import React, { useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 import { useChildrenStore } from '@/store/childrenStore';
+import { useAuthStore } from '@/store/authStore';
 import { ChildRecord } from '@/types';
 import ChildListItem from '@/components/ChildListItem';
 import SearchBar from '@/components/SearchBar';
 import FilterChips from '@/components/FilterChips';
+import LoginPrompt from '@/components/LoginPrompt';
 
 export default function ChildrenListScreen() {
   const searchQuery = useChildrenStore((s) => s.searchQuery);
@@ -15,6 +18,48 @@ export default function ChildrenListScreen() {
   const activeFilter = useChildrenStore((s) => s.activeFilter);
   const setActiveFilter = useChildrenStore((s) => s.setActiveFilter);
   const children = useChildrenStore((s) => s.children);
+  const syncPending = useChildrenStore((s) => s.syncPending);
+  const fetchFromServer = useChildrenStore((s) => s.fetchFromServer);
+  const isSyncing = useChildrenStore((s) => s.isSyncing);
+  const pendingSync = useChildrenStore((s) => s.pendingSync);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  const [showLogin, setShowLogin] = useState(false);
+  const [syncingAll, setSyncingAll] = useState(false);
+
+  // Count local-only records (non-numeric IDs)
+  const localCount = useMemo(
+    () => children.filter((c) => !/^\d+$/.test(c.id)).length,
+    [children]
+  );
+
+  const handleSyncAll = async () => {
+    if (!isAuthenticated) {
+      setShowLogin(true);
+      return;
+    }
+    setSyncingAll(true);
+    try {
+      const result = await syncPending();
+      await fetchFromServer();
+      if (result.synced > 0) {
+        Toast.show({ type: 'success', text1: 'Sync Complete', text2: `${result.synced} record(s) synced successfully` });
+      } else if (result.failed > 0) {
+        Toast.show({ type: 'error', text1: 'Sync Failed', text2: `${result.failed} record(s) failed to sync` });
+      } else {
+        Toast.show({ type: 'info', text1: 'All Synced', text2: 'All records are already up to date' });
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: 'Sync Error', text2: 'Could not connect to server' });
+    } finally {
+      setSyncingAll(false);
+    }
+  };
+
+  const handleLoginSuccess = () => {
+    setShowLogin(false);
+    handleSyncAll();
+  };
 
   const filteredChildren = useMemo(() => {
     let filtered = children;
@@ -53,9 +98,29 @@ export default function ChildrenListScreen() {
       {/* Filters */}
       <FilterChips active={activeFilter} onChange={setActiveFilter} />
 
-      {/* Results count */}
+      {/* Results count + Sync button */}
       <View style={styles.resultsRow}>
         <Text style={styles.resultsText}>{filteredChildren.length} records found</Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.syncBtn,
+            (syncingAll || isSyncing) && styles.syncBtnDisabled,
+            pressed && styles.syncBtnPressed,
+          ]}
+          onPress={handleSyncAll}
+          disabled={syncingAll || isSyncing}
+          accessibilityRole="button"
+          accessibilityLabel="Sync all records"
+        >
+          {syncingAll || isSyncing ? (
+            <ActivityIndicator size={14} color={theme.primary} />
+          ) : (
+            <Ionicons name="cloud-upload-outline" size={16} color={theme.primary} />
+          )}
+          <Text style={styles.syncBtnText}>
+            {syncingAll || isSyncing ? 'Syncing...' : `Sync${localCount > 0 || pendingSync.length > 0 ? ` (${localCount + pendingSync.length})` : ''}`}
+          </Text>
+        </Pressable>
       </View>
 
       {/* List */}
@@ -87,6 +152,13 @@ export default function ChildrenListScreen() {
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
       </Pressable>
+
+      {/* Login Prompt */}
+      <LoginPrompt
+        visible={showLogin}
+        onSuccess={handleLoginSuccess}
+        onCancel={() => setShowLogin(false)}
+      />
     </View>
   );
 }
@@ -101,12 +173,37 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   resultsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
   },
   resultsText: {
     fontSize: font.size.sm,
     color: theme.textMuted,
+  },
+  syncBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.sm,
+    backgroundColor: theme.primary + '12',
+    borderWidth: 1,
+    borderColor: theme.primary + '30',
+  },
+  syncBtnText: {
+    fontSize: font.size.sm,
+    fontWeight: font.weight.semibold,
+    color: theme.primary,
+  },
+  syncBtnPressed: {
+    opacity: 0.7,
+  },
+  syncBtnDisabled: {
+    opacity: 0.5,
   },
   list: {
     paddingBottom: 100,

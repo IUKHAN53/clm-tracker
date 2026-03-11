@@ -30,8 +30,8 @@ export default function NewChildScreen() {
   const [contactNumber, setContactNumber] = useState('');
   const [category, setCategory] = useState<ChildCategory>('Defaulter');
   const [vaccinated, setVaccinated] = useState<VaccinationStatus>('NO');
-  const [communityMemberName] = useState(user?.name || '');
-  const [communityMemberContact] = useState(user?.phone || '');
+  const communityMemberName = user?.name || '';
+  const communityMemberContact = user?.phone || '';
   const [gpsCoordinates, setGpsCoordinates] = useState<string | null>(null);
   const [isCapturingGPS, setIsCapturingGPS] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -83,11 +83,10 @@ export default function NewChildScreen() {
         type: 'success',
         text1: 'Record Saved',
         text2: 'Child record added successfully.',
-        onHide: () => router.back(),
       });
 
-      // Navigate back after a short delay for toast visibility
-      setTimeout(() => router.back(), 1500);
+      // Redirect to home after a short delay for toast visibility
+      setTimeout(() => router.replace('/(tabs)'), 2500);
     } catch {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save record. Please try again.' });
       isSavingRef.current = false;
@@ -229,29 +228,6 @@ export default function NewChildScreen() {
           )}
         </View>
 
-        {/* Community Member */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="people" size={20} color={theme.primary} />
-            <Text style={styles.sectionTitle}>Community Member Info</Text>
-          </View>
-          <FormField
-            label="Community Member Name"
-            value={communityMemberName}
-            onChange={() => {}}
-            placeholder="Auto-filled from login"
-            editable={false}
-          />
-          <FormField
-            label="Contact Number"
-            value={communityMemberContact}
-            onChange={() => {}}
-            placeholder="Auto-filled from login"
-            keyboardType="phone-pad"
-            editable={false}
-          />
-        </View>
-
         {/* GPS */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -307,27 +283,24 @@ function FormField({
   onChange,
   placeholder,
   keyboardType = 'default',
-  editable = true,
 }: {
   label: string;
   value: string;
   onChange: (text: string) => void;
   placeholder: string;
   keyboardType?: 'default' | 'phone-pad' | 'numeric';
-  editable?: boolean;
 }) {
   return (
     <View style={fieldStyles.container}>
       <Text style={fieldStyles.label}>{label}</Text>
       <TextInput
-        style={[fieldStyles.input, !editable && fieldStyles.inputDisabled]}
+        style={fieldStyles.input}
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
         placeholderTextColor={theme.textMuted}
         keyboardType={keyboardType}
         accessibilityLabel={label}
-        editable={editable}
       />
     </View>
   );
@@ -353,10 +326,6 @@ const fieldStyles = StyleSheet.create({
     color: theme.text,
     backgroundColor: theme.surfaceAlt,
     minHeight: 48,
-  },
-  inputDisabled: {
-    backgroundColor: theme.border + '30',
-    color: theme.textMuted,
   },
 });
 

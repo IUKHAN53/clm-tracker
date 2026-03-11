@@ -77,7 +77,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.userDetails}>
                 <Text style={styles.userName}>{user?.name}</Text>
-                <Text style={styles.userPhone}>{user?.phone || user?.email}</Text>
+                <Text style={styles.userPhone}>{user?.phone}</Text>
               </View>
             </View>
 

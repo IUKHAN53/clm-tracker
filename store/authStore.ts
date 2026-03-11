@@ -8,8 +8,10 @@ const AUTH_USER_KEY = '@clm_auth_user';
 interface User {
   id: number;
   name: string;
-  email: string;
-  phone?: string | null;
+  phone: string;
+  district?: string | null;
+  uc?: string | null;
+  fix_site?: string | null;
 }
 
 interface AuthState {
@@ -31,7 +33,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (phone, password) => {
     try {
-      const response = await api.post('/login', { phone, password });
+      const response = await api.post('/clm/login', { phone, password });
       const { token, user } = response.data;
 
       await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
