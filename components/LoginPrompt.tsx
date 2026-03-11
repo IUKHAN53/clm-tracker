@@ -64,7 +64,7 @@ export default function LoginPrompt({ visible, onSuccess, onCancel }: LoginPromp
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleCancel}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
+        style={styles.keyboardView}
       >
         <Pressable style={styles.overlay} onPress={handleCancel}>
           <Pressable style={styles.dialog} onPress={(e) => e.stopPropagation()}>
@@ -155,9 +155,12 @@ export default function LoginPrompt({ visible, onSuccess, onCancel }: LoginPromp
 }
 
 const styles = StyleSheet.create({
+  keyboardView: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xxl,
@@ -169,11 +172,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 24,
-    elevation: 10,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   iconCircle: {
     width: 64,
