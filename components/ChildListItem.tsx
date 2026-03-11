@@ -1,8 +1,10 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 import { ChildRecord } from '@/types';
+import { isSynced } from '@/utils/sync';
 import StatusBadge from './StatusBadge';
 
 interface ChildListItemProps {
@@ -10,6 +12,7 @@ interface ChildListItemProps {
 }
 
 function ChildListItem({ child }: ChildListItemProps) {
+  const synced = isSynced(child.id);
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
@@ -25,7 +28,14 @@ function ChildListItem({ child }: ChildListItemProps) {
         </View>
         <View style={styles.right}>
           <StatusBadge category={child.category} vaccinated={child.vaccinated} />
-          <Text style={styles.serial}>#{child.serialNumber}</Text>
+          <View style={styles.syncRow}>
+            <Ionicons
+              name={synced ? 'cloud-done' : 'cloud-offline'}
+              size={12}
+              color={synced ? theme.status.vaccinated : theme.status.zeroDose}
+            />
+            <Text style={styles.serial}>#{child.serialNumber}</Text>
+          </View>
         </View>
       </View>
     </Pressable>
@@ -74,6 +84,11 @@ const styles = StyleSheet.create({
   },
   right: {
     alignItems: 'flex-end',
+    gap: spacing.xs,
+  },
+  syncRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.xs,
   },
   serial: {

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
   Linking,
   ActivityIndicator,
 } from 'react-native';
@@ -15,6 +14,8 @@ import Toast from 'react-native-toast-message';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 import { useChildrenStore } from '@/store/childrenStore';
 import StatusBadge from '@/components/StatusBadge';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import { isSynced, formatDate } from '@/utils/sync';
 import { captureGPS } from '@/utils/gps';
 
 export default function ChildDetailScreen() {
@@ -23,6 +24,7 @@ export default function ChildDetailScreen() {
   const deleteChild = useChildrenStore((s) => s.deleteChild);
   const child = useChildrenStore((s) => s.children.find((c) => c.id === id));
   const [isCapturingGPS, setIsCapturingGPS] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   if (!child) {
     return (
@@ -68,23 +70,11 @@ export default function ChildDetailScreen() {
     Linking.openURL(`tel:${number}`);
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete Record',
-      `Are you sure you want to delete the record for ${child.childName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteChild(child.id);
-            Toast.show({ type: 'success', text1: 'Deleted', text2: 'Record has been removed.' });
-            router.back();
-          },
-        },
-      ]
-    );
+  const handleDeleteConfirm = async () => {
+    setShowDeleteDialog(false);
+    await deleteChild(child.id);
+    Toast.show({ type: 'success', text1: 'Deleted', text2: 'Record has been removed.' });
+    router.back();
   };
 
   return (
@@ -236,10 +226,38 @@ export default function ChildDetailScreen() {
         </Pressable>
       </View>
 
+      {/* Record Info */}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="time" size={20} color={theme.primary} />
+          <Text style={styles.cardTitle}>Record Info</Text>
+        </View>
+
+        <View style={infoStyles.row}>
+          <View style={infoStyles.labelRow}>
+            <Ionicons
+              name={isSynced(child.id) ? 'cloud-done' : 'cloud-offline'}
+              size={14}
+              color={isSynced(child.id) ? theme.status.vaccinated : theme.status.zeroDose}
+            />
+            <Text style={infoStyles.label}>Sync Status</Text>
+          </View>
+          <Text style={[
+            infoStyles.value,
+            { color: isSynced(child.id) ? theme.status.vaccinated : theme.status.zeroDose },
+          ]}>
+            {isSynced(child.id) ? 'Synced' : 'Local Only'}
+          </Text>
+        </View>
+
+        <InfoRow icon="calendar" label="Created" value={formatDate(child.createdAt)} />
+        <InfoRow icon="create" label="Last Updated" value={formatDate(child.updatedAt)} />
+      </View>
+
       {/* Delete */}
       <Pressable
         style={({ pressed }) => [styles.deleteBtn, pressed && styles.btnPressed]}
-        onPress={handleDelete}
+        onPress={() => setShowDeleteDialog(true)}
         accessibilityRole="button"
       >
         <View style={styles.btnContent}>
@@ -247,6 +265,17 @@ export default function ChildDetailScreen() {
           <Text style={styles.deleteBtnText}>Delete Record</Text>
         </View>
       </Pressable>
+
+      <ConfirmDialog
+        visible={showDeleteDialog}
+        icon="trash"
+        title="Delete Record"
+        message={`Are you sure you want to delete the record for ${child.childName}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteDialog(false)}
+      />
     </ScrollView>
   );
 }
