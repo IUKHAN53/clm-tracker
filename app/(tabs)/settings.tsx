@@ -8,10 +8,17 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Platform,
+  Linking,
+  Share,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
+import NetInfo from '@react-native-community/netinfo';
+import * as Device from 'expo-device';
+import * as Application from 'expo-application';
+import Constants from 'expo-constants';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 import { useChildrenStore } from '@/store/childrenStore';
 import { useAuthStore } from '@/store/authStore';
@@ -24,11 +31,67 @@ export default function SettingsScreen() {
   const [uc, setUc] = useState(siteInfo.uc);
   const [fixSite, setFixSite] = useState(siteInfo.fixSite);
 
+  // Dropdown data
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [ucs, setUcs] = useState<string[]>([]);
+  const [fixSites, setFixSites] = useState<string[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+
   useEffect(() => {
     setDistrict(siteInfo.district);
     setUc(siteInfo.uc);
     setFixSite(siteInfo.fixSite);
   }, [siteInfo]);
+
+  // Fetch districts on mount
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      try {
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/outreach-sites/districts`);
+        const data = await response.json();
+        setDistricts(data);
+      } catch {
+        // Silently fail - user can still type manually
+      }
+    };
+    fetchDistricts();
+  }, []);
+
+  // Fetch UCs when district changes
+  useEffect(() => {
+    if (!district) {
+      setUcs([]);
+      return;
+    }
+    const fetchUcs = async () => {
+      try {
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/outreach-sites/union-councils?district=${encodeURIComponent(district)}`);
+        const data = await response.json();
+        setUcs(data);
+      } catch {
+        // Silently fail
+      }
+    };
+    fetchUcs();
+  }, [district]);
+
+  // Fetch Fix Sites when UC changes
+  useEffect(() => {
+    if (!district || !uc) {
+      setFixSites([]);
+      return;
+    }
+    const fetchFixSites = async () => {
+      try {
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/outreach-sites/fix-sites?district=${encodeURIComponent(district)}&union_council=${encodeURIComponent(uc)}`);
+        const data = await response.json();
+        setFixSites(data);
+      } catch {
+        // Silently fail
+      }
+    };
+    fetchFixSites();
+  }, [district, uc]);
 
   const handleSave = async () => {
     await setSiteInfo({ district, uc, fixSite });
@@ -54,9 +117,94 @@ export default function SettingsScreen() {
       Toast.show({ type: 'warning', text1: 'Not Signed In', text2: 'Please sign in first to sync data.' });
       return;
     }
-    await syncPending();
-    await fetchFromServer();
-    Toast.show({ type: 'success', text1: 'Sync Complete', text2: 'Data has been synchronized with the server.' });
+
+    // Check internet connectivity first
+    const netState = await NetInfo.fetch();
+    if (!netState.isConnected || !netState.isInternetReachable) {
+      Toast.show({
+        type: 'error',
+        text1: 'No Internet Connection',
+        text2: 'Please check your internet connection and try again.',
+      });
+      return;
+    }
+
+    try {
+      const result = await syncPending();
+      await fetchFromServer();
+
+      if (result.failed > 0) {
+        Toast.show({
+          type: 'warning',
+          text1: 'Partial Sync',
+          text2: `${result.synced} synced, ${result.failed} failed. Try again later.`,
+        });
+      } else {
+        Toast.show({ type: 'success', text1: 'Sync Complete', text2: 'Data has been synchronized with the server.' });
+      }
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: 'Sync Failed',
+        text2: 'Could not connect to server. Please try again.',
+      });
+    }
+  };
+
+  const getDebugInfo = async () => {
+    const netState = await NetInfo.fetch();
+    const debugInfo = `
+CLM Tracker Debug Info
+=======================
+App Version: ${Application.nativeApplicationVersion || '1.0.0'}
+Build: ${Application.nativeBuildVersion || 'N/A'}
+
+Device Info:
+- Brand: ${Device.brand || 'Unknown'}
+- Model: ${Device.modelName || 'Unknown'}
+- OS: ${Platform.OS} ${Device.osVersion || Platform.Version}
+- Device Type: ${Device.deviceType === 1 ? 'Phone' : Device.deviceType === 2 ? 'Tablet' : 'Unknown'}
+
+Network:
+- Connected: ${netState.isConnected ? 'Yes' : 'No'}
+- Type: ${netState.type}
+- Internet Reachable: ${netState.isInternetReachable ? 'Yes' : 'No'}
+
+User:
+- Logged In: ${isAuthenticated ? 'Yes' : 'No'}
+- Name: ${user?.name || 'N/A'}
+- Phone: ${user?.phone || 'N/A'}
+
+Data:
+- Total Records: ${children.length}
+- Pending Sync: ${pendingSync.length}
+- Site: ${siteInfo.district || 'Not Set'} / ${siteInfo.uc || ''} / ${siteInfo.fixSite || ''}
+
+Generated: ${new Date().toISOString()}
+    `.trim();
+    return debugInfo;
+  };
+
+  const handleShareDebugInfo = async () => {
+    try {
+      const debugInfo = await getDebugInfo();
+
+      // Try WhatsApp first
+      const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(debugInfo)}`;
+      const canOpenWhatsApp = await Linking.canOpenURL(whatsappUrl);
+
+      if (canOpenWhatsApp) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        // Fallback to native share
+        await Share.share({
+          message: debugInfo,
+          title: 'CLM Tracker Debug Info',
+        });
+      }
+    } catch {
+      Toast.show({ type: 'error', text1: 'Share Failed', text2: 'Could not share debug info.' });
+    }
   };
 
   return (
@@ -155,35 +303,127 @@ export default function SettingsScreen() {
 
         <View style={styles.field}>
           <Text style={styles.label}>District</Text>
-          <TextInput
-            style={styles.input}
-            value={district}
-            onChangeText={setDistrict}
-            placeholder="Enter district name"
-            placeholderTextColor={theme.textMuted}
-          />
+          {districts.length > 0 ? (
+            <View style={styles.pickerContainer}>
+              <Pressable
+                style={styles.picker}
+                onPress={() => {
+                  Alert.alert(
+                    'Select District',
+                    '',
+                    [
+                      ...districts.map((d) => ({
+                        text: d,
+                        onPress: () => {
+                          setDistrict(d);
+                          setUc('');
+                          setFixSite('');
+                        },
+                      })),
+                      { text: 'Cancel', style: 'cancel' },
+                    ]
+                  );
+                }}
+              >
+                <Text style={district ? styles.pickerText : styles.pickerPlaceholder}>
+                  {district || 'Select district'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={theme.textMuted} />
+              </Pressable>
+            </View>
+          ) : (
+            <TextInput
+              style={styles.input}
+              value={district}
+              onChangeText={(val) => {
+                setDistrict(val);
+                setUc('');
+                setFixSite('');
+              }}
+              placeholder="Enter district name"
+              placeholderTextColor={theme.textMuted}
+            />
+          )}
         </View>
 
         <View style={styles.field}>
           <Text style={styles.label}>UC (Union Council)</Text>
-          <TextInput
-            style={styles.input}
-            value={uc}
-            onChangeText={setUc}
-            placeholder="Enter UC name"
-            placeholderTextColor={theme.textMuted}
-          />
+          {ucs.length > 0 ? (
+            <View style={styles.pickerContainer}>
+              <Pressable
+                style={styles.picker}
+                onPress={() => {
+                  Alert.alert(
+                    'Select UC',
+                    '',
+                    [
+                      ...ucs.map((u) => ({
+                        text: u,
+                        onPress: () => {
+                          setUc(u);
+                          setFixSite('');
+                        },
+                      })),
+                      { text: 'Cancel', style: 'cancel' },
+                    ]
+                  );
+                }}
+              >
+                <Text style={uc ? styles.pickerText : styles.pickerPlaceholder}>
+                  {uc || 'Select UC'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={theme.textMuted} />
+              </Pressable>
+            </View>
+          ) : (
+            <TextInput
+              style={styles.input}
+              value={uc}
+              onChangeText={(val) => {
+                setUc(val);
+                setFixSite('');
+              }}
+              placeholder={district ? 'Enter UC name' : 'Select district first'}
+              placeholderTextColor={theme.textMuted}
+            />
+          )}
         </View>
 
         <View style={styles.field}>
           <Text style={styles.label}>Fix Site</Text>
-          <TextInput
-            style={styles.input}
-            value={fixSite}
-            onChangeText={setFixSite}
-            placeholder="Enter fix site name"
-            placeholderTextColor={theme.textMuted}
-          />
+          {fixSites.length > 0 ? (
+            <View style={styles.pickerContainer}>
+              <Pressable
+                style={styles.picker}
+                onPress={() => {
+                  Alert.alert(
+                    'Select Fix Site',
+                    '',
+                    [
+                      ...fixSites.map((f) => ({
+                        text: f,
+                        onPress: () => setFixSite(f),
+                      })),
+                      { text: 'Cancel', style: 'cancel' },
+                    ]
+                  );
+                }}
+              >
+                <Text style={fixSite ? styles.pickerText : styles.pickerPlaceholder}>
+                  {fixSite || 'Select fix site'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color={theme.textMuted} />
+              </Pressable>
+            </View>
+          ) : (
+            <TextInput
+              style={styles.input}
+              value={fixSite}
+              onChangeText={setFixSite}
+              placeholder={uc ? 'Enter fix site name' : 'Select UC first'}
+              placeholderTextColor={theme.textMuted}
+            />
+          )}
         </View>
 
         <Pressable
@@ -233,6 +473,17 @@ export default function SettingsScreen() {
           Community Led Monitoring - Vaccination tracking for field workers.{'\n'}
           Data is stored locally and syncs with the server when connected.
         </Text>
+
+        <Pressable
+          style={({ pressed }) => [styles.debugBtn, pressed && styles.btnPressed]}
+          onPress={handleShareDebugInfo}
+          accessibilityRole="button"
+        >
+          <View style={styles.btnRow}>
+            <Ionicons name="share-social" size={18} color={theme.primary} />
+            <Text style={styles.debugBtnText}>Share Debug Info</Text>
+          </View>
+        </Pressable>
       </View>
     </ScrollView>
   );
@@ -378,6 +629,29 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surfaceAlt,
     minHeight: 48,
   },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: radius.sm,
+    backgroundColor: theme.surfaceAlt,
+    minHeight: 48,
+  },
+  picker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    minHeight: 48,
+  },
+  pickerText: {
+    fontSize: font.size.md,
+    color: theme.text,
+  },
+  pickerPlaceholder: {
+    fontSize: font.size.md,
+    color: theme.textMuted,
+  },
   saveBtn: {
     backgroundColor: theme.primary,
     borderRadius: radius.md,
@@ -422,5 +696,21 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     lineHeight: 20,
     marginTop: spacing.sm,
+  },
+  debugBtn: {
+    borderWidth: 1,
+    borderColor: theme.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    marginTop: spacing.lg,
+    backgroundColor: theme.primary + '10',
+  },
+  debugBtnText: {
+    color: theme.primary,
+    fontSize: font.size.md,
+    fontWeight: font.weight.semibold,
   },
 });

@@ -4,6 +4,8 @@ import api from '@/api/client';
 
 const AUTH_TOKEN_KEY = '@clm_auth_token';
 const AUTH_USER_KEY = '@clm_auth_user';
+const SITE_KEY = '@clm_site';
+const STORAGE_KEY = '@clm_children';
 
 interface User {
   id: number;
@@ -40,6 +42,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
 
       set({ token, user, isAuthenticated: true });
+
+      // Populate site info from user's data if available
+      if (user.district || user.uc || user.fix_site) {
+        const currentSiteData = await AsyncStorage.getItem(SITE_KEY);
+        const currentSite = currentSiteData ? JSON.parse(currentSiteData) : {};
+
+        // Only populate if not already set
+        const newSite = {
+          district: currentSite.district || user.district || '',
+          uc: currentSite.uc || user.uc || '',
+          fixSite: currentSite.fixSite || user.fix_site || '',
+        };
+        await AsyncStorage.setItem(SITE_KEY, JSON.stringify(newSite));
+      }
+
+      // Update pending records with community member info
+      const childrenData = await AsyncStorage.getItem(STORAGE_KEY);
+      if (childrenData) {
+        const children = JSON.parse(childrenData);
+        const updatedChildren = children.map((child: Record<string, unknown>) => {
+          // Only update if community member info is missing
+          if (!child.communityMemberName || !child.communityMemberContact) {
+            return {
+              ...child,
+              communityMemberName: child.communityMemberName || user.name,
+              communityMemberContact: child.communityMemberContact || user.phone,
+            };
+          }
+          return child;
+        });
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedChildren));
+      }
+
       return true;
     } catch {
       return false;

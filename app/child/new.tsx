@@ -64,6 +64,16 @@ export default function NewChildScreen() {
     setIsSaving(true);
 
     try {
+      // Auto-fetch GPS if not already captured
+      let finalGpsCoordinates = gpsCoordinates;
+      if (!finalGpsCoordinates) {
+        const coords = await captureGPS();
+        if (coords) {
+          finalGpsCoordinates = coords;
+          setGpsCoordinates(coords);
+        }
+      }
+
       await addChild({
         childName: childName.trim(),
         fatherName: fatherName.trim(),
@@ -76,7 +86,7 @@ export default function NewChildScreen() {
           vaccinated === 'YES' ? new Date().toISOString().split('T')[0] : null,
         communityMemberName: communityMemberName.trim(),
         communityMemberContact: communityMemberContact.trim(),
-        gpsCoordinates,
+        gpsCoordinates: finalGpsCoordinates,
       });
 
       Toast.show({

@@ -5,18 +5,18 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { theme, font } from '@/constants/Colors';
 
-const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  index: 'grid',
-  children: 'people',
-  settings: 'settings-sharp',
+const TAB_ICONS: Record<string, { filled: keyof typeof Ionicons.glyphMap; outline: keyof typeof Ionicons.glyphMap }> = {
+  index: { filled: 'grid', outline: 'grid-outline' },
+  children: { filled: 'people', outline: 'people-outline' },
+  settings: { filled: 'settings', outline: 'settings-outline' },
 };
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const iconName = TAB_ICONS[name] || 'document';
+  const icons = TAB_ICONS[name] || { filled: 'document', outline: 'document-outline' };
   return (
     <View style={[styles.iconWrap, focused && styles.iconFocused]}>
       <Ionicons
-        name={focused ? iconName : (`${iconName}-outline` as keyof typeof Ionicons.glyphMap)}
+        name={focused ? icons.filled : icons.outline}
         size={22}
         color={focused ? theme.primary : theme.textMuted}
       />

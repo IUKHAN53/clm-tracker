@@ -38,17 +38,22 @@ export default function LoginPrompt({ visible, onSuccess, onCancel }: LoginPromp
 
     try {
       const success = await login(phone.trim(), password);
+
       if (success) {
+        // Clear state and close modal immediately on success
+        setIsLoading(false);
         setPhone('');
         setPassword('');
         setError('');
+        // Call onSuccess after clearing state to ensure clean close
         onSuccess();
+        return;
       } else {
-        setError('Invalid phone number or password');
+        setError('Invalid phone number or password. Please try again.');
+        setIsLoading(false);
       }
     } catch {
-      setError('Connection error. Please try again.');
-    } finally {
+      setError('Connection error. Please check your internet and try again.');
       setIsLoading(false);
     }
   };
