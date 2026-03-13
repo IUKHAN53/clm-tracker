@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
+  ScrollView,
   Platform,
   Image,
 } from 'react-native';
@@ -43,74 +44,80 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
-        {/* Header with logos */}
-        <View style={styles.header}>
-          <View style={styles.logoRow}>
-            <Image source={require('../assets/images/govt-logo.png')} style={styles.logo} resizeMode="contain" />
-            <Image source={require('../assets/images/epi-logo.png')} style={styles.logoLarge} resizeMode="contain" />
-            <Image source={require('../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
-          </View>
-          <Text style={styles.title}>CLM Vaccination Tracker</Text>
-          <Text style={styles.subtitle}>Sign in to sync your data</Text>
-        </View>
-
-        {/* Form */}
-        <View style={styles.form}>
-          <View style={styles.field}>
-            <Text style={styles.label}>Phone Number</Text>
-            <View style={styles.inputRow}>
-              <Ionicons name="call" size={18} color={theme.textMuted} />
-              <TextInput
-                style={styles.input}
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="Enter your phone number"
-                placeholderTextColor={theme.textMuted}
-                keyboardType="phone-pad"
-                autoCapitalize="none"
-                accessibilityLabel="Phone number"
-              />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
+      >
+        <View style={styles.content}>
+          {/* Header with logos */}
+          <View style={styles.header}>
+            <View style={styles.logoRow}>
+              <Image source={require('../assets/images/govt-logo.png')} style={styles.logo} resizeMode="contain" />
+              <Image source={require('../assets/images/epi-logo.png')} style={styles.logoLarge} resizeMode="contain" />
+              <Image source={require('../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
             </View>
+            <Text style={styles.title}>CLM Vaccination Tracker</Text>
+            <Text style={styles.subtitle}>Sign in to sync your data</Text>
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.inputRow}>
-              <Ionicons name="lock-closed" size={18} color={theme.textMuted} />
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Enter your password"
-                placeholderTextColor={theme.textMuted}
-                secureTextEntry
-                accessibilityLabel="Password"
-              />
-            </View>
-          </View>
-
-          <Pressable
-            style={({ pressed }) => [styles.loginBtn, pressed && styles.btnPressed]}
-            onPress={handleLogin}
-            disabled={isLoading}
-            accessibilityRole="button"
-          >
-            {isLoading ? (
-              <ActivityIndicator color={theme.textOnPrimary} size="small" />
-            ) : (
-              <View style={styles.loginBtnContent}>
-                <Ionicons name="log-in" size={20} color={theme.textOnPrimary} />
-                <Text style={styles.loginBtnText}>Sign In</Text>
+          {/* Form */}
+          <View style={styles.form}>
+            <View style={styles.field}>
+              <Text style={styles.label}>Phone Number</Text>
+              <View style={styles.inputRow}>
+                <Ionicons name="call" size={18} color={theme.textMuted} />
+                <TextInput
+                  style={styles.input}
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="Enter your phone number"
+                  placeholderTextColor={theme.textMuted}
+                  keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  accessibilityLabel="Phone number"
+                />
               </View>
-            )}
-          </Pressable>
-        </View>
+            </View>
 
-        <Text style={styles.footer}>Powered by EPI & TKF</Text>
-      </View>
+            <View style={styles.field}>
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.inputRow}>
+                <Ionicons name="lock-closed" size={18} color={theme.textMuted} />
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Enter your password"
+                  placeholderTextColor={theme.textMuted}
+                  secureTextEntry
+                  accessibilityLabel="Password"
+                />
+              </View>
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [styles.loginBtn, pressed && styles.btnPressed]}
+              onPress={handleLogin}
+              disabled={isLoading}
+              accessibilityRole="button"
+            >
+              {isLoading ? (
+                <ActivityIndicator color={theme.textOnPrimary} size="small" />
+              ) : (
+                <View style={styles.loginBtnContent}>
+                  <Ionicons name="log-in" size={20} color={theme.textOnPrimary} />
+                  <Text style={styles.loginBtnText}>Sign In</Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
+
+          <Text style={styles.footer}>Powered by EPI & TKF</Text>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -120,10 +127,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.background,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.xxl,
   },
   header: {
     alignItems: 'center',
