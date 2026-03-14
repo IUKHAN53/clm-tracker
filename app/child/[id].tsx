@@ -144,6 +144,9 @@ export default function ChildDetailScreen() {
         />
         <InfoRow icon="folder" label="Category" value={child.category} />
         <InfoRow icon="list" label="Serial #" value={String(child.serialNumber)} />
+        {child.district ? <InfoRow icon="map" label="District" value={child.district} /> : null}
+        {child.uc ? <InfoRow icon="business" label="UC" value={child.uc} /> : null}
+        {child.fixSite ? <InfoRow icon="flag" label="Fix Site" value={child.fixSite} /> : null}
       </View>
 
       {/* Vaccination Action */}

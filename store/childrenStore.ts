@@ -59,6 +59,9 @@ function toApiPayload(child: Partial<ChildRecord>, siteInfo?: SiteInfo): Record<
   if (child.communityMemberContact !== undefined) payload.community_member_contact = child.communityMemberContact;
   if (child.gpsCoordinates !== undefined) payload.gps_coordinates = child.gpsCoordinates;
   if (child.serialNumber !== undefined) payload.serial_number = child.serialNumber;
+  if (child.district !== undefined) payload.district = child.district;
+  if (child.uc !== undefined) payload.uc = child.uc;
+  if (child.fixSite !== undefined) payload.fix_site = child.fixSite;
 
   // Parse GPS into lat/lng if available
   if (child.gpsCoordinates) {
@@ -69,11 +72,11 @@ function toApiPayload(child: Partial<ChildRecord>, siteInfo?: SiteInfo): Record<
     }
   }
 
-  // Include site info if provided
+  // Include site info as fallback if not set on child
   if (siteInfo) {
-    payload.fix_site = siteInfo.fixSite;
-    payload.uc = siteInfo.uc;
-    payload.district = siteInfo.district;
+    if (!payload.fix_site) payload.fix_site = siteInfo.fixSite;
+    if (!payload.uc) payload.uc = siteInfo.uc;
+    if (!payload.district) payload.district = siteInfo.district;
   }
 
   return payload;
@@ -95,6 +98,9 @@ function fromApiRecord(data: Record<string, unknown>): ChildRecord {
     communityMemberName: (data.community_member_name as string) || '',
     communityMemberContact: (data.community_member_contact as string) || '',
     gpsCoordinates: (data.gps_coordinates as string) || null,
+    district: (data.district as string) || '',
+    uc: (data.uc as string) || '',
+    fixSite: (data.fix_site as string) || '',
     createdAt: (data.created_at as string) || new Date().toISOString(),
     updatedAt: (data.updated_at as string) || new Date().toISOString(),
   };

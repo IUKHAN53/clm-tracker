@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   Pressable,
   Alert,
   ActivityIndicator,
@@ -18,85 +17,13 @@ import Toast from 'react-native-toast-message';
 import NetInfo from '@react-native-community/netinfo';
 import * as Device from 'expo-device';
 import * as Application from 'expo-application';
-import Constants from 'expo-constants';
 import { theme, spacing, radius, font } from '@/constants/Colors';
 import { useChildrenStore } from '@/store/childrenStore';
 import { useAuthStore } from '@/store/authStore';
 
 export default function SettingsScreen() {
-  const { siteInfo, setSiteInfo, children, pendingSync, isSyncing, syncPending, fetchFromServer } = useChildrenStore();
+  const { siteInfo, children, pendingSync, isSyncing, syncPending, fetchFromServer } = useChildrenStore();
   const { isAuthenticated, user, logout } = useAuthStore();
-
-  const [district, setDistrict] = useState(siteInfo.district);
-  const [uc, setUc] = useState(siteInfo.uc);
-  const [fixSite, setFixSite] = useState(siteInfo.fixSite);
-
-  // Dropdown data
-  const [districts, setDistricts] = useState<string[]>([]);
-  const [ucs, setUcs] = useState<string[]>([]);
-  const [fixSites, setFixSites] = useState<string[]>([]);
-  const [loadingLocations, setLoadingLocations] = useState(false);
-
-  useEffect(() => {
-    setDistrict(siteInfo.district);
-    setUc(siteInfo.uc);
-    setFixSite(siteInfo.fixSite);
-  }, [siteInfo]);
-
-  // Fetch districts on mount
-  useEffect(() => {
-    const fetchDistricts = async () => {
-      try {
-        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/outreach-sites/districts`);
-        const data = await response.json();
-        setDistricts(data);
-      } catch {
-        // Silently fail - user can still type manually
-      }
-    };
-    fetchDistricts();
-  }, []);
-
-  // Fetch UCs when district changes
-  useEffect(() => {
-    if (!district) {
-      setUcs([]);
-      return;
-    }
-    const fetchUcs = async () => {
-      try {
-        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/outreach-sites/union-councils?district=${encodeURIComponent(district)}`);
-        const data = await response.json();
-        setUcs(data);
-      } catch {
-        // Silently fail
-      }
-    };
-    fetchUcs();
-  }, [district]);
-
-  // Fetch Fix Sites when UC changes
-  useEffect(() => {
-    if (!district || !uc) {
-      setFixSites([]);
-      return;
-    }
-    const fetchFixSites = async () => {
-      try {
-        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/outreach-sites/fix-sites?district=${encodeURIComponent(district)}&union_council=${encodeURIComponent(uc)}`);
-        const data = await response.json();
-        setFixSites(data);
-      } catch {
-        // Silently fail
-      }
-    };
-    fetchFixSites();
-  }, [district, uc]);
-
-  const handleSave = async () => {
-    await setSiteInfo({ district, uc, fixSite });
-    Toast.show({ type: 'success', text1: 'Saved', text2: 'Location information updated successfully.' });
-  };
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -291,153 +218,6 @@ Generated: ${new Date().toISOString()}
         )}
       </View>
 
-      {/* Site Info */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="location" size={22} color={theme.primary} />
-          <Text style={styles.sectionTitle}>Location Information</Text>
-        </View>
-        <Text style={styles.sectionDesc}>
-          Set your current field location. This appears on the dashboard.
-        </Text>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>District</Text>
-          {districts.length > 0 ? (
-            <View style={styles.pickerContainer}>
-              <Pressable
-                style={styles.picker}
-                onPress={() => {
-                  Alert.alert(
-                    'Select District',
-                    '',
-                    [
-                      ...districts.map((d) => ({
-                        text: d,
-                        onPress: () => {
-                          setDistrict(d);
-                          setUc('');
-                          setFixSite('');
-                        },
-                      })),
-                      { text: 'Cancel', style: 'cancel' },
-                    ]
-                  );
-                }}
-              >
-                <Text style={district ? styles.pickerText : styles.pickerPlaceholder}>
-                  {district || 'Select district'}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color={theme.textMuted} />
-              </Pressable>
-            </View>
-          ) : (
-            <TextInput
-              style={styles.input}
-              value={district}
-              onChangeText={(val) => {
-                setDistrict(val);
-                setUc('');
-                setFixSite('');
-              }}
-              placeholder="Enter district name"
-              placeholderTextColor={theme.textMuted}
-            />
-          )}
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>UC (Union Council)</Text>
-          {ucs.length > 0 ? (
-            <View style={styles.pickerContainer}>
-              <Pressable
-                style={styles.picker}
-                onPress={() => {
-                  Alert.alert(
-                    'Select UC',
-                    '',
-                    [
-                      ...ucs.map((u) => ({
-                        text: u,
-                        onPress: () => {
-                          setUc(u);
-                          setFixSite('');
-                        },
-                      })),
-                      { text: 'Cancel', style: 'cancel' },
-                    ]
-                  );
-                }}
-              >
-                <Text style={uc ? styles.pickerText : styles.pickerPlaceholder}>
-                  {uc || 'Select UC'}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color={theme.textMuted} />
-              </Pressable>
-            </View>
-          ) : (
-            <TextInput
-              style={styles.input}
-              value={uc}
-              onChangeText={(val) => {
-                setUc(val);
-                setFixSite('');
-              }}
-              placeholder={district ? 'Enter UC name' : 'Select district first'}
-              placeholderTextColor={theme.textMuted}
-            />
-          )}
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.label}>Fix Site</Text>
-          {fixSites.length > 0 ? (
-            <View style={styles.pickerContainer}>
-              <Pressable
-                style={styles.picker}
-                onPress={() => {
-                  Alert.alert(
-                    'Select Fix Site',
-                    '',
-                    [
-                      ...fixSites.map((f) => ({
-                        text: f,
-                        onPress: () => setFixSite(f),
-                      })),
-                      { text: 'Cancel', style: 'cancel' },
-                    ]
-                  );
-                }}
-              >
-                <Text style={fixSite ? styles.pickerText : styles.pickerPlaceholder}>
-                  {fixSite || 'Select fix site'}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color={theme.textMuted} />
-              </Pressable>
-            </View>
-          ) : (
-            <TextInput
-              style={styles.input}
-              value={fixSite}
-              onChangeText={setFixSite}
-              placeholder={uc ? 'Enter fix site name' : 'Select UC first'}
-              placeholderTextColor={theme.textMuted}
-            />
-          )}
-        </View>
-
-        <Pressable
-          style={({ pressed }) => [styles.saveBtn, pressed && styles.btnPressed]}
-          onPress={handleSave}
-          accessibilityRole="button"
-        >
-          <View style={styles.btnRow}>
-            <Ionicons name="save" size={18} color={theme.textOnPrimary} />
-            <Text style={styles.saveBtnText}>Save Location Info</Text>
-          </View>
-        </Pressable>
-      </View>
-
       {/* Data Management */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -608,49 +388,6 @@ const styles = StyleSheet.create({
     color: theme.status.refusal,
     fontSize: font.size.md,
     fontWeight: font.weight.semibold,
-  },
-  field: {
-    marginBottom: spacing.lg,
-  },
-  label: {
-    fontSize: font.size.sm,
-    fontWeight: font.weight.medium,
-    color: theme.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    fontSize: font.size.md,
-    color: theme.text,
-    backgroundColor: theme.surfaceAlt,
-    minHeight: 48,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: radius.sm,
-    backgroundColor: theme.surfaceAlt,
-    minHeight: 48,
-  },
-  picker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    minHeight: 48,
-  },
-  pickerText: {
-    fontSize: font.size.md,
-    color: theme.text,
-  },
-  pickerPlaceholder: {
-    fontSize: font.size.md,
-    color: theme.textMuted,
   },
   saveBtn: {
     backgroundColor: theme.primary,

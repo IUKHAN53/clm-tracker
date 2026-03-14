@@ -16,6 +16,9 @@ export interface ChildRecord {
   communityMemberName: string;
   communityMemberContact: string;
   gpsCoordinates: string | null;
+  district: string;
+  uc: string;
+  fixSite: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,9 +18,10 @@ import { useChildrenStore } from '@/store/childrenStore';
 import { useAuthStore } from '@/store/authStore';
 import { ChildCategory, VaccinationStatus } from '@/types';
 import { captureGPS } from '@/utils/gps';
+import DropdownPicker from '@/components/DropdownPicker';
 
 export default function NewChildScreen() {
-  const { addChild } = useChildrenStore();
+  const { addChild, siteInfo } = useChildrenStore();
   const user = useAuthStore((s) => s.user);
 
   const [childName, setChildName] = useState('');
@@ -36,6 +37,66 @@ export default function NewChildScreen() {
   const [isCapturingGPS, setIsCapturingGPS] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
+
+  // Location fields - default from siteInfo
+  const [district, setDistrict] = useState(siteInfo.district);
+  const [uc, setUc] = useState(siteInfo.uc);
+  const [fixSite, setFixSite] = useState(siteInfo.fixSite);
+
+  // Dropdown data
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [ucs, setUcs] = useState<string[]>([]);
+  const [fixSites, setFixSites] = useState<string[]>([]);
+
+  // Fetch districts on mount
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      try {
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/outreach-sites/districts`);
+        const data = await response.json();
+        setDistricts(data);
+      } catch {
+        // Silently fail
+      }
+    };
+    fetchDistricts();
+  }, []);
+
+  // Fetch UCs when district changes
+  useEffect(() => {
+    if (!district) {
+      setUcs([]);
+      return;
+    }
+    const fetchUcs = async () => {
+      try {
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/outreach-sites/union-councils?district=${encodeURIComponent(district)}`);
+        const data = await response.json();
+        setUcs(data);
+      } catch {
+        setUcs([]);
+      }
+    };
+    fetchUcs();
+  }, [district]);
+
+  // Fetch Fix Sites when UC changes
+  useEffect(() => {
+    if (!district || !uc) {
+      setFixSites([]);
+      return;
+    }
+    const fetchFixSites = async () => {
+      try {
+        const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/outreach-sites/fix-sites?district=${encodeURIComponent(district)}&union_council=${encodeURIComponent(uc)}`);
+        const data = await response.json();
+        setFixSites(data);
+      } catch {
+        setFixSites([]);
+      }
+    };
+    fetchFixSites();
+  }, [district, uc]);
 
   const handleCaptureGPS = async () => {
     setIsCapturingGPS(true);
@@ -87,6 +148,9 @@ export default function NewChildScreen() {
         communityMemberName: communityMemberName.trim(),
         communityMemberContact: communityMemberContact.trim(),
         gpsCoordinates: finalGpsCoordinates,
+        district: district.trim(),
+        uc: uc.trim(),
+        fixSite: fixSite.trim(),
       });
 
       Toast.show({
@@ -120,6 +184,47 @@ export default function NewChildScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Location Info */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="location" size={20} color={theme.primary} />
+            <Text style={styles.sectionTitle}>Location</Text>
+          </View>
+
+          <DropdownPicker
+            label="District"
+            value={district}
+            options={districts}
+            placeholder="Select district"
+            onSelect={(val) => {
+              setDistrict(val);
+              setUc('');
+              setFixSite('');
+            }}
+          />
+
+          <DropdownPicker
+            label="UC (Union Council)"
+            value={uc}
+            options={ucs}
+            placeholder={district ? 'Select UC' : 'Select district first'}
+            onSelect={(val) => {
+              setUc(val);
+              setFixSite('');
+            }}
+            disabled={!district}
+          />
+
+          <DropdownPicker
+            label="Fix Site"
+            value={fixSite}
+            options={fixSites}
+            placeholder={uc ? 'Select fix site' : 'Select UC first'}
+            onSelect={setFixSite}
+            disabled={!uc}
+          />
+        </View>
+
         {/* Child Info */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
