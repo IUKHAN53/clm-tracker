@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.background,
   },
   content: {
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   banner: {
     backgroundColor: theme.primary,

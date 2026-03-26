@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingVertical: spacing.xl,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   section: {
     backgroundColor: theme.surface,
