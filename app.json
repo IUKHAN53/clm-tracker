@@ -45,7 +45,8 @@
         {
           "locationWhenInUsePermission": "This app needs your location to record GPS coordinates of vaccination sites."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
